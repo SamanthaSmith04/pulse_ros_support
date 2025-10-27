@@ -15,7 +15,9 @@ find_package(rosidl_default_generators REQUIRED)
 
 rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/PulseParams.msg"
-  DEPENDENCIES std_msgs 
+  "msg/Texture.msg"
+  "srv/Pulse.srv"
+  DEPENDENCIES std_msgs geometry_msgs
 )
 
 if(BUILD_TESTING)
