@@ -1,39 +1,55 @@
-#!/usr/bin/env python3
 
 import rclpy
 from rclpy.node import Node
-from pulse_msgs.srv import Pulse
+from pulse_msgs.srv import Pulse as PulseMsg
 import pulse
+import warp as wp
 
+from pulse.lib.warp_kernels import Pose
+
+import pulse.lib.plotting as plot
+
+from pulse.lib.pulse import Pulse
 class PulseServer(Node):
     def __init__(self):
         super().__init__('pulse_server')
         self.srv = self.create_service(
-            Pulse,
+            PulseMsg,
             'pulse',
             self.pulse_callback
         )
         self.get_logger().info('Pulse service ready on "pulse"')
 
-    def pulse_callback(self, request: Pulse.Request, response: Pulse.Response) -> Pulse.Response:
-        self.get_logger().info(f"Received pulse request: {request}")
+    def pulse_callback(self, request: PulseMsg.Request, response: PulseMsg.Response) -> PulseMsg.Response:
+        self.get_logger().info(f"Received pulse request")
 
-        params = pulse.PulseParams(
-            sigma_u = request.pulse_params.sigma_u,
-            sigma_v = request.pulse_params.sigma_v,
-            a = request.pulse_params.a,
-            ref_dist = request.pulse_params.ref_dist,
-            samples_per_pulse = request.pulse_params.samples_per_pulse
-        )
-
-        p = pulse.Pulse(params)
+        p = Pulse(sigma_u=request.pulse_params.sigma_u,
+                        sigma_v=request.pulse_params.sigma_v,
+                        a=request.pulse_params.a,
+                        ref_dist=request.pulse_params.ref_distance,
+                        samples_per_pulse=request.pulse_params.samples_per_pulse)
         p.load_mesh(request.mesh_filepath)
-        res = p.evaluate_poses(request.poses)
+        positions = request.poses
+        warp_poses = []
+
+        for ros_pose in positions.poses:
+            pose = Pose()
+            pose.position = wp.vec3(ros_pose.position.x, ros_pose.position.y, ros_pose.position.z)
+            pose.rotation = wp.quat(ros_pose.orientation.x,
+                                   ros_pose.orientation.y,
+                                   ros_pose.orientation.z,
+                                   ros_pose.orientation.w)
+            warp_poses.append(pose)
+
+        # Pass to evaluate_pulses
+        res = p.evaluate_pulses(warp_poses)
         res_scaled = p.get_scaled_thicknesses(res)
-        
-        response.texture.height = res_scaled.shape[0]
-        response.texture.width = res_scaled.shape[1]
+        print(res_scaled.shape)
+        # response.texture.height = res_scaled.shape[0]
+        # response.texture.width = res_scaled.shape[1]
         response.texture.data = (res_scaled.flatten() * 255).astype('uint8').tolist()
+
+        plot.visualize_result(warp_poses, res_scaled, request.mesh_filepath)
         response.message = "Pulse operation completed successfully."
 
         response.success = True
