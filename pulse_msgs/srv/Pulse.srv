@@ -1,6 +1,6 @@
 PulseParams pulse_params
 string mesh_filepath # Filepath to the mesh representing the surface to be painted (may change to the actual mesh object later, but for now will use filepath)
-geometry_msgs/PoseArray[] poses # Array of poses representing the positions and orientations of the spray nozzle
+geometry_msgs/PoseArray poses # Pose array representing the robot poses of the spray gun nozzle
 
 ---
 
