@@ -3,12 +3,13 @@
 <package format="3">
   <name>pulse_support</name>
   <version>0.0.0</version>
-  <description>TODO: Package description</description>
-  <maintainer email="Troyandme04@gmail.com">smith.15485</maintainer>
+  <description>ROS2 wrapper for pulse</description>
+  <maintainer email="smith.15485@osu.edu">Samantha Smith</maintainer>
   <license>TODO: License declaration</license>
 
   <depend>rclpy</depend>
   <depend>pulse_msgs</depend>
+  <depend>pulse</depend>
 
   <test_depend>ament_copyright</test_depend>
   <test_depend>ament_flake8</test_depend>
