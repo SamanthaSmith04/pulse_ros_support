@@ -29,27 +29,40 @@ class PulseServer(Node):
                         ref_dist=request.pulse_params.ref_distance,
                         samples_per_pulse=request.pulse_params.samples_per_pulse)
         p.load_mesh(request.mesh_filepath)
-        positions = request.poses
+        # positions = request.poses
         warp_poses = []
 
-        for ros_pose in positions.poses:
-            pose = Pose()
-            pose.position = wp.vec3(ros_pose.position.x, ros_pose.position.y, ros_pose.position.z)
-            pose.rotation = wp.quat(ros_pose.orientation.x,
-                                   ros_pose.orientation.y,
+        viz_poses = []
+
+        for seg in request.paths:
+            warp_seg = []
+            for ros_pose in seg.poses:
+                pose = Pose()
+                pose.position = wp.vec3(ros_pose.position.x, ros_pose.position.y, ros_pose.position.z)
+                pose.rotation = wp.quat(ros_pose.orientation.x,
+                                       ros_pose.orientation.y,
                                    ros_pose.orientation.z,
                                    ros_pose.orientation.w)
-            warp_poses.append(pose)
+                warp_seg.append(pose)
+                viz_poses.append(pose)
+            warp_poses.append(warp_seg)
+
+        # Dwell times
+        dwell_times = request.dwell_times
 
         # Pass to evaluate_pulses
-        res = p.evaluate_pulses(warp_poses)
+        # res = p.evaluate_pulses(warp_poses)
+        interp_poses, _, _ = p.interpolate_poses_by_dwell(warp_poses, dwell_times)
+        res = p.evaluate_pulses_with_dwells(warp_poses, dwell_times)
         res_scaled = p.get_scaled_thicknesses(res)
         print(res_scaled.shape)
         # response.texture.height = res_scaled.shape[0]
         # response.texture.width = res_scaled.shape[1]
-        response.texture.data = (res_scaled.flatten() * 255).astype('uint8').tolist()
+        response.texture.data = (res_scaled.flatten()).astype('uint8').tolist()
 
-        plot.visualize_result(warp_poses, res_scaled, request.mesh_filepath)
+        # plot.visualize_result(warp_poses, res, request.mesh_filepath)
+        plot.visualize_result(viz_poses, res_scaled, request.mesh_filepath)
+        plot.visualize_result(interp_poses, res_scaled, request.mesh_filepath)
         response.message = "Pulse operation completed successfully."
 
         response.success = True
