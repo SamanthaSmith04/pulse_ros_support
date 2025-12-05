@@ -6,6 +6,7 @@ float32[] dwell_times # Dwell times at each pose in seconds (should be same leng
 
 ---
 
-Texture texture # Resulting paint thickness map 
+Thickness thicknesses # Resulting thicknesses at each face of the mesh after applying the pulse operation
+Thickness[] thicknesses_per_pulse # Thickness contributions per pulse (each entry corresponds to a pulse in the input paths)
 string message  # Status message
 bool success   # Indicates if the pulse operation was successful

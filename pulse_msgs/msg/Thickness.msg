@@ -1,0 +1,1 @@
+float32[] data # Per-face thicknesses values

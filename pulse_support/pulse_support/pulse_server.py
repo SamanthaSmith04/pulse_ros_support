@@ -2,6 +2,7 @@
 import rclpy
 from rclpy.node import Node
 from pulse_msgs.srv import Pulse as PulseMsg
+from pulse_msgs.msg import Thickness
 import pulse
 import warp as wp
 
@@ -30,7 +31,7 @@ class PulseServer(Node):
                         samples_per_pulse=request.pulse_params.samples_per_pulse)
         p.load_mesh(request.mesh_filepath)
         # positions = request.poses
-        warp_poses = []
+        warp_path_segments = []
 
         viz_poses = []
 
@@ -45,27 +46,60 @@ class PulseServer(Node):
                                    ros_pose.orientation.w)
                 warp_seg.append(pose)
                 viz_poses.append(pose)
-            warp_poses.append(warp_seg)
+            warp_path_segments.append(warp_seg)
 
         # Dwell times
         dwell_times = request.dwell_times
 
-        # Pass to evaluate_pulses
-        # res = p.evaluate_pulses(warp_poses)
-        interp_poses, _, _ = p.interpolate_poses_by_dwell(warp_poses, dwell_times)
-        res = p.evaluate_pulses_with_dwells(warp_poses, dwell_times)
-        res_scaled = p.get_scaled_thicknesses(res)
-        print(res_scaled.shape)
-        # response.texture.height = res_scaled.shape[0]
-        # response.texture.width = res_scaled.shape[1]
-        response.texture.data = (res_scaled.flatten()).astype('uint8').tolist()
+        self.get_logger().info(f"Evaluating {len(warp_path_segments)} path segments with a total of {len(viz_poses)} poses.")
 
-        # plot.visualize_result(warp_poses, res, request.mesh_filepath)
+        # Pass to evaluate_pulses
+        # res = p.evaluate_pulses(warp_path_segments)
+        interp_poses, _, _ = p.interpolate_poses_by_dwell(warp_path_segments, dwell_times)
+        # res = p.evaluate_pulses_with_dwells(warp_path_segments, dwell_times)
+        # res_scaled = p.get_scaled_thicknesses(res)
+        # print(res_scaled.shape)
+        # # response.texture.height = res_scaled.shape[0]
+        # # response.texture.width = res_scaled.shape[1]
+        # response.texture.data = (res_scaled.flatten()).astype('uint8').tolist()
+
+        # # plot.visualize_result(warp_path_segments, res, request.mesh_filepath)
+        # plot.visualize_result(viz_poses, res_scaled, request.mesh_filepath)
+        # plot.visualize_result(interp_poses, res_scaled, request.mesh_filepath)
+
+        # get current time
+        from datetime import datetime
+        current_datetime = datetime.now()
+        thicknesses_per_pulse = []
+        total_thicknesses = []
+        idx = 0
+        for seg in warp_path_segments:
+            for pose_idx in range(0, len(seg) - 1):
+                pose_pair = [seg[pose_idx], seg[pose_idx + 1]]
+                res = p.evaluate_pulses_with_dwells([pose_pair], [dwell_times[idx], dwell_times[idx + 1]])
+                thicknesses_per_pulse.append(res)
+                if len(total_thicknesses) == 0:
+                    total_thicknesses = res
+                else:
+                    total_thicknesses += res
+                idx += 1
+                # plot.visualize_result(pose_pair, p.get_scaled_thicknesses(res), request.mesh_filepath)
+        res_scaled = p.get_scaled_thicknesses(total_thicknesses)
+        end_time = datetime.now()
+
+        total_time = end_time - current_datetime
+        self.get_logger().info(f"Pulse evaluation completed in {total_time.total_seconds():.2f} seconds.")
         plot.visualize_result(viz_poses, res_scaled, request.mesh_filepath)
         plot.visualize_result(interp_poses, res_scaled, request.mesh_filepath)
         response.message = "Pulse operation completed successfully."
 
         response.success = True
+
+        response.thicknesses.data = res_scaled.tolist()
+        for tp in thicknesses_per_pulse:
+            thickness_msg = Thickness()
+            thickness_msg.data = p.get_scaled_thicknesses(tp).tolist()
+            response.thicknesses_per_pulse.append(thickness_msg)
         return response
 
 
