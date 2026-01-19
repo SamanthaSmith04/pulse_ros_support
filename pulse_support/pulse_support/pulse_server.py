@@ -52,7 +52,7 @@ class PulseServer(Node):
         dwell_times = request.dwell_times
 
         self.get_logger().info(f"Evaluating {len(warp_path_segments)} path segments with a total of {len(viz_poses)} poses.")
-
+        self.get_logger().info(f"Dwell times provided: {len(dwell_times)}")
         # Pass to evaluate_pulses
         # res = p.evaluate_pulses(warp_path_segments)
         interp_poses, _, _ = p.interpolate_poses_by_dwell(warp_path_segments, dwell_times)
@@ -79,7 +79,7 @@ class PulseServer(Node):
                 res = p.evaluate_pulses_with_dwells([pose_pair], [dwell_times[idx], dwell_times[idx + 1]])
                 thicknesses_per_pulse.append(res)
                 if len(total_thicknesses) == 0:
-                    total_thicknesses = res
+                    total_thicknesses = res.copy()
                 else:
                     total_thicknesses += res
                 idx += 1
@@ -90,15 +90,15 @@ class PulseServer(Node):
         total_time = end_time - current_datetime
         self.get_logger().info(f"Pulse evaluation completed in {total_time.total_seconds():.2f} seconds.")
         plot.visualize_result(viz_poses, res_scaled, request.mesh_filepath)
-        plot.visualize_result(interp_poses, res_scaled, request.mesh_filepath)
+        plot.visualize_result(interp_poses, total_thicknesses, request.mesh_filepath)
         response.message = "Pulse operation completed successfully."
 
         response.success = True
 
-        response.thicknesses.data = res_scaled.tolist()
+        response.thicknesses.data = total_thicknesses.tolist()
         for tp in thicknesses_per_pulse:
             thickness_msg = Thickness()
-            thickness_msg.data = p.get_scaled_thicknesses(tp).tolist()
+            thickness_msg.data = tp.tolist()#p.get_scaled_thicknesses(tp).tolist()
             response.thicknesses_per_pulse.append(thickness_msg)
         return response
 
