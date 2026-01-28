@@ -89,8 +89,10 @@ class PulseServer(Node):
 
         total_time = end_time - current_datetime
         self.get_logger().info(f"Pulse evaluation completed in {total_time.total_seconds():.2f} seconds.")
-        plot.visualize_result(viz_poses, res_scaled, request.mesh_filepath)
-        plot.visualize_result(interp_poses, total_thicknesses, request.mesh_filepath)
+        if request.display_results:
+            plot.visualize_result(viz_poses, res_scaled, request.mesh_filepath)
+            plot.visualize_result(interp_poses, total_thicknesses, request.mesh_filepath)
+            plot.display_within_bounds(total_thicknesses, request.min_thickness, request.max_thickness, request.mesh_filepath)
         response.message = "Pulse operation completed successfully."
 
         response.success = True
