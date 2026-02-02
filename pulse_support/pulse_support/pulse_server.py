@@ -76,7 +76,7 @@ class PulseServer(Node):
         for seg in warp_path_segments:
             for pose_idx in range(0, len(seg) - 1):
                 pose_pair = [seg[pose_idx], seg[pose_idx + 1]]
-                res = p.evaluate_pulses_with_dwells([pose_pair], [dwell_times[idx], dwell_times[idx + 1]])
+                res = p.evaluate_pulses_with_dwells([pose_pair], [dwell_times[idx]])
                 thicknesses_per_pulse.append(res)
                 if len(total_thicknesses) == 0:
                     total_thicknesses = res.copy()
