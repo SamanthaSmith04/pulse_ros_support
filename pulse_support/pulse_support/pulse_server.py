@@ -12,6 +12,9 @@ from pulse.lib.warp_kernels import Pose
 import pulse.lib.plotting as plot
 
 from pulse.lib.pulse import Pulse
+
+import numpy as np
+
 class PulseServer(Node):
     def __init__(self):
         super().__init__('pulse_server')
@@ -29,7 +32,8 @@ class PulseServer(Node):
                         sigma_v=request.pulse_params.sigma_v,
                         a=request.pulse_params.a,
                         ref_dist=request.pulse_params.ref_distance,
-                        samples_per_pulse=request.pulse_params.samples_per_pulse)
+                        samples_per_pulse=request.pulse_params.samples_per_pulse,
+                        volumetric_flow_rate=request.pulse_params.volumetric_flow_rate)
         p.load_mesh(request.mesh_filepath)
         # positions = request.poses
         warp_path_segments = []
@@ -54,44 +58,27 @@ class PulseServer(Node):
 
         self.get_logger().info(f"Evaluating {len(warp_path_segments)} path segments with a total of {len(viz_poses)} poses.")
         self.get_logger().info(f"Dwell times provided: {len(dwell_times)}")
-        # Pass to evaluate_pulses
-        # res = p.evaluate_pulses(warp_path_segments)
-        interp_poses, _, _ = p.interpolate_poses_by_dwell(warp_path_segments, dwell_times)
-        # res = p.evaluate_pulses_with_dwells(warp_path_segments, dwell_times)
-        # res_scaled = p.get_scaled_thicknesses(res)
-        # print(res_scaled.shape)
-        # # response.texture.height = res_scaled.shape[0]
-        # # response.texture.width = res_scaled.shape[1]
-        # response.texture.data = (res_scaled.flatten()).astype('uint8').tolist()
-
-        # # plot.visualize_result(warp_path_segments, res, request.mesh_filepath)
-        # plot.visualize_result(viz_poses, res_scaled, request.mesh_filepath)
-        # plot.visualize_result(interp_poses, res_scaled, request.mesh_filepath)
 
         # get current time
         from datetime import datetime
         current_datetime = datetime.now()
         thicknesses_per_pulse = []
-        total_thicknesses = []
         idx = 0
         for seg in warp_path_segments:
             for pose_idx in range(0, len(seg) - 1):
                 pose_pair = [seg[pose_idx], seg[pose_idx + 1]]
                 res = p.evaluate_pulses_with_dwells([pose_pair], [dwell_times[idx]])
-                thicknesses_per_pulse.append(res)
-                if len(total_thicknesses) == 0:
-                    total_thicknesses = res.copy()
-                else:
-                    total_thicknesses += res
+                thicknesses_per_pulse.append(p.get_scaled_thicknesses(res))
                 idx += 1
-                # plot.visualize_result(pose_pair, p.get_scaled_thicknesses(res), request.mesh_filepath)
-        res_scaled = p.get_scaled_thicknesses(total_thicknesses)
+
+        total_thicknesses = np.sum(np.array(thicknesses_per_pulse), axis=0)
         end_time = datetime.now()
 
         total_time = end_time - current_datetime
         self.get_logger().info(f"Pulse evaluation completed in {total_time.total_seconds():.2f} seconds.")
         if request.display_results:
-            plot.visualize_result(viz_poses, res_scaled, request.mesh_filepath)
+            interp_poses, _, _ = p.interpolate_poses_by_dwell(warp_path_segments, dwell_times)
+            plot.visualize_result(viz_poses, total_thicknesses, request.mesh_filepath)
             plot.visualize_result(interp_poses, total_thicknesses, request.mesh_filepath)
             plot.display_within_bounds(total_thicknesses, request.min_thickness, request.max_thickness, request.mesh_filepath)
         response.message = "Pulse operation completed successfully."
@@ -101,11 +88,10 @@ class PulseServer(Node):
         response.thicknesses.data = total_thicknesses.tolist()
         for tp in thicknesses_per_pulse:
             thickness_msg = Thickness()
-            thickness_msg.data = tp.tolist()#p.get_scaled_thicknesses(tp).tolist()
+            thickness_msg.data = tp.tolist()
             response.thicknesses_per_pulse.append(thickness_msg)
         return response
-
-
+    
 def main(args=None):
     rclpy.init(args=args)
     node = PulseServer()

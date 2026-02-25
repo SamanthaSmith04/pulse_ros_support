@@ -4,6 +4,9 @@ geometry_msgs/PoseArray[] paths # Pose array representing the robot poses of the
 
 float32[] dwell_times # Dwell times at each pose in seconds (should be same length as all poses in poses array)
 
+bool display_results # Whether to display the resulting thicknesses 
+float32 min_thickness # Minimum desired thickness for optimization (used only for visualization)
+float32 max_thickness # Maximum desired thickness for optimization (used only for visualization)
 ---
 
 Thickness thicknesses # Resulting thicknesses at each face of the mesh after applying the pulse operation
