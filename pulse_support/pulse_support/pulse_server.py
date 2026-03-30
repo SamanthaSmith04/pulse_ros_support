@@ -81,6 +81,7 @@ class PulseServer(Node):
             plot.visualize_result(viz_poses, total_thicknesses, request.mesh_filepath)
             plot.visualize_result(interp_poses, total_thicknesses, request.mesh_filepath)
             plot.display_within_bounds(total_thicknesses, request.min_thickness, request.max_thickness, request.mesh_filepath)
+            plot.plot_pose_velocities_lines(warp_path_segments, request.mesh_filepath, dwell_times)
         response.message = "Pulse operation completed successfully."
 
         response.success = True
